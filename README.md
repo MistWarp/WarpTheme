@@ -1,2 +1,9 @@
 # WarpTheme
-A theme marketplace for Scratch Editors
+
+A theme sharing site where themes can be rated and uploaded by anyone
+
+- Login with Scratch or Rotur
+- Share your exported themes
+- Browse other themes
+- Preview themes in your editor or choise
+- Convert themes to other editors with the builtin converter
