@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.ProfileUser.username}}'s Profile - WarpTheme</title>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=stylesheet" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    {{template "nav" .}}
+
+    <main class="main-content">
+        <div class="profile-header">
+            <div class="profile-avatar">
+                {{if eq .AuthType "scratch"}}
+                {{if .ProfileUser.avatar}}
+                <img src="{{.ProfileUser.avatar}}" alt="{{.User.username}}">
+                {{else}}
+                <img src="{{getScratchUserAvatarURL .User.username}}" alt="{{.User.username}}">
+                {{end}}
+                {{else if eq .AuthType "rotur"}}
+                <img src="https://avatars.rotur.dev/{{.User.username}}" alt="{{.User.username}}">
+                {{end}}
+            </div>
+            <div class="profile-info">
+                <h1 class="profile-name">{{formatUsername .User.username .AuthType}}</h1>
+                <p class="profile-meta">
+                    <span><i data-lucide="palette"></i> {{len .Themes}} theme(s)</span>
+                    <span><i data-lucide="calendar"></i> {{formatDate .ProfileUser.createdAt}}</span>
+                </p>
+            </div>
+        </div>
+
+        <div class="profile-themes">
+            <h2>Themes</h2>
+            {{if .Themes}}
+                <div class="themes-grid">
+                    {{range .Themes}}
+                    {{template "theme-card" (themeCardData . $.Mods false false false $.Users)}}
+                    {{end}}
+                </div>
+            {{else if .IsOwnProfile}}
+                {{template "empty-state" (emptyStateData "palette" "You haven't created any themes yet." true "/upload" "Create Your First Theme")}}
+            {{else}}
+                {{template "empty-state" (emptyStateData "palette" "This user hasn't created any themes yet." false "" "")}}
+            {{end}}
+        </div>
+    </main>
+
+    {{template "footer" .}}
+
+    <script src="/static/js/main.js"></script>
+    <script src="/static/js/profile.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

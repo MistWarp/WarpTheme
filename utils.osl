@@ -1,0 +1,335 @@
+def encodeURIComponent(string str) string (
+    return url.QueryEscape(str)
+)
+
+def decodeURIComponent(string str) string (
+    auto result = url.QueryUnescape(str).toArray()
+    if result[2] != null (
+        return ""
+    )
+    return result[1].toStr()
+)
+
+def encodeBase64URLSafe(string str) string (
+    auto result = raw("base64.URLEncoding.EncodeToString([]byte(str))")
+    return result
+)
+
+def getScratchUserAvatarURL(string username) string (
+    string actualUsername = username
+    if actualUsername.startsWith("@") (
+        actualUsername = actualUsername.trim(2, actualUsername.len)
+    )
+    return "https://uploads.scratch.mit.edu/get_image/user/" ++ actualUsername ++ "_90x90.png"
+)
+
+def safeStyle(string str) any (
+    return raw("template.CSS(str)")
+)
+
+def formatUsername(string username, string authType) string (
+    if authType == "scratch" (
+        if !username.startsWith("@") (
+            return "@" ++ username
+        )
+    )
+    return username
+)
+
+def getModIconURL(string icon) string (
+    if icon == "" (
+        return ""
+    )
+    if icon.contains("http") (
+        return icon
+    )
+    return icon
+)
+
+def getPreviewURL(object mod, string appURL, string themeUUID) string (
+    if mod == null (
+        return ""
+    )
+    if !mod.contains("previewUrl") (
+        return ""
+    )
+    string previewUrl = mod.previewUrl.toStr()
+    string downloadURL = appURL ++ "/api/theme/download?uuid=" ++ themeUUID
+    return previewUrl.replace("{DOWNLOAD_URL}", downloadURL).toStr()
+)
+
+def getPlatformName(object mods, string platformId) string (
+    if mods == null or platformId == "" (
+        return ""
+    )
+    platformId = platformId.toLower()
+    if mods.contains(platformId) (
+        object mod = mods[platformId]
+        if mod.contains("name") (
+            return mod.name.toStr()
+        )
+    )
+    return platformId
+)
+
+def getPlatformIcon(object mods, string platformId) string (
+    if mods == null or platformId == "" (
+        return ""
+    )
+    platformId = platformId.toLower()
+    if mods.contains(platformId) (
+        object mod = mods[platformId]
+        if mod.contains("icon") (
+            return mod.icon.toStr()
+        )
+    )
+    return ""
+)
+
+def getModObject(object mods, string platformId) object (
+    if mods == null or platformId == "" (
+        return {}
+    )
+    platformId = platformId.toLower()
+    if mods.contains(platformId) (
+        return mods[platformId].assert(object)
+    )
+    return {}
+)
+
+def buildGradientFromAccent(object accent) string (
+    if accent == null (
+        return "background: linear-gradient(135deg, #4c97ff, #9966ff);"
+    )
+
+    object colors = {}
+    if accent.contains("colors") (
+        colors.gradient = accent.colors
+    )
+    if accent.contains("direction") (
+        colors.gradientDirection = accent.direction
+    )
+
+    return buildGradientFromColors(colors)
+)
+
+def buildGradientFromColors(object colors) string (
+    string primary = ""
+    string secondary = ""
+    string singleColor = ""
+    array gradientColors = []
+    array sortedColors = []
+    array colorStrings = []
+    string colorVal = ""
+    number direction = 135
+    
+    if colors == null (
+        return "background: linear-gradient(135deg, #4c97ff, #9966ff);"
+    )
+    
+    if colors.contains("gradient") (
+        gradientColors = colors.gradient.toArray()
+    )
+    
+    if gradientColors.len == 0 (
+        if colors.contains("primary") and colors.contains("secondary") (
+            primary = colors.primary.toStr()
+            secondary = colors.secondary.toStr()
+            if primary != "" and secondary != "" (
+                return "background: linear-gradient(135deg, " ++ primary ++ ", " ++ secondary ++ ");"
+            )
+        )
+        return "background: linear-gradient(135deg, #4c97ff, #9966ff);"
+    )
+    
+    if gradientColors.len == 1 (
+        singleColor = extractColorValue(gradientColors[1])
+        if singleColor == "" (
+            return "background: linear-gradient(135deg, #4c97ff, #9966ff);"
+        )
+        return "background: linear-gradient(135deg, " ++ singleColor ++ ", " ++ singleColor ++ ");"
+    )
+    
+    sortedColors = gradientColors.slice().sortBy("position")
+    
+    colorStrings = []
+    for i sortedColors.len (
+        colorVal = extractColorValue(sortedColors[i])
+        if colorVal != "" (
+            colorStrings.append(colorVal)
+        )
+    )
+    
+    if colors.contains("gradientDirection") (
+        direction = colors.gradientDirection.toNum()
+    )
+    
+    if colorStrings.len < 2 (
+        return "background: linear-gradient(135deg, #4c97ff, #9966ff);"
+    )
+    
+    return "background: linear-gradient(" ++ direction.toStr() ++ "deg, " ++ colorStrings.join(", ") ++ ");"
+)
+
+def extractColorValue(any colorObj) string (
+    if colorObj == null (
+        return ""
+    )
+    if typeof(colorObj) == "object" (
+        object co = colorObj
+        if co.contains("color") (
+            return co.color.toStr()
+        )
+    )
+    return ""
+)
+
+def truncateString(string str, number maxLen) string (
+    if str.len <= maxLen (
+        return str
+    )
+    number endIdx = raw("int(maxLen - 3)")
+    return str.trim(1, endIdx) ++ "..."
+)
+
+def generateThemeCardColors(object accent) array (
+    auto colors = []
+    array accentColors = accent.colors.assert(array)
+
+    if accentColors.len > 0 (
+        object firstColor = accentColors[1].assert(object)
+        colors.append(firstColor.color.toStr())
+    ) else (
+        colors.append("#4c97ff")
+    )
+
+    if accentColors.len > 1 (
+        object lastColor = accentColors[accentColors.len].assert(object)
+        colors.append(lastColor.color.toStr())
+    ) else (
+        colors.append("#9966ff")
+    )
+
+    return colors
+)
+
+def formatNumber(any num) string (
+    raw("var n float64")
+    raw("if jn, ok := num.(json.Number); ok { n, _ = jn.Float64() } else { switch v := num.(type) { case float64: n = v; case int: n = float64(v) } }")
+    raw("if n >= 1000000 { return fmt.Sprintf(\"%.1fM\", n/1000000) } else if n >= 1000 { return fmt.Sprintf(\"%.1fK\", n/1000) } else { return fmt.Sprintf(\"%.0f\", n) }")
+)
+
+def formatDate(any dateInput) string (
+    raw("dateStr := \"\"")
+    raw("switch v := dateInput.(type) {")
+    raw("  case string:")
+    raw("    dateStr = v")
+    raw("  case json.Number:")
+    raw("    dateStr = v.String()")
+    raw("  case float64:")
+    raw("    ts := int64(v)")
+    raw("    if ts > 1e12 {")
+    raw("      dateStr = time.UnixMilli(ts).Format(time.RFC3339)")
+    raw("    } else {")
+    raw("      dateStr = time.Unix(ts, 0).Format(time.RFC3339)")
+    raw("    }")
+    raw("  case int:")
+    raw("    ts := int64(v)")
+    raw("    if ts > 1e12 {")
+    raw("      dateStr = time.UnixMilli(ts).Format(time.RFC3339)")
+    raw("    } else {")
+    raw("      dateStr = time.Unix(ts, 0).Format(time.RFC3339)")
+    raw("    }")
+    raw("}")
+    raw("t, err := time.Parse(time.RFC3339, dateStr)")
+    raw("if err != nil { return \"unknown\" }")
+    raw("now := time.Now()")
+    raw("diff := int(now.Sub(t).Seconds())")
+    raw("if diff < 60 { return \"just now\" } else if diff < 3600 { return fmt.Sprintf(\"%dm ago\", diff/60) } else if diff < 86400 { return fmt.Sprintf(\"%dh ago\", diff/3600) } else if diff < 604800 { return fmt.Sprintf(\"%dd ago\", diff/86400) } else if diff < 2592000 { return fmt.Sprintf(\"%dw ago\", diff/604800) } else { return t.Format(\"2006-01-02\") }")
+)
+
+def isValidURL(string urlStr) boolean (
+    auto parsed = url.Parse(urlStr).toArray()
+    return parsed[2] == null and parsed[1].Scheme != "" and parsed[1].Host != ""
+)
+
+def sanitizeHTML(string input) string (
+    string result = input
+
+    result = result.replace("<", "&lt;").toStr()
+    result = result.replace(">", "&gt;").toStr()
+    result = result.replace("\"", "&quot;").toStr()
+    result = result.replace("'", "&#x27;").toStr()
+
+    return result
+)
+
+def escapeJSON(string input) string (
+    string result = input
+
+    result = result.replace("\\", "\\\\").toStr()
+    result = result.replace("\"", "\\\"").toStr()
+    result = result.replace("\n", "\\n").toStr()
+    result = result.replace("\r", "\\r").toStr()
+    result = result.replace("\t", "\\t").toStr()
+
+    return result
+)
+
+def toJson(any data) string (
+    if data == null (
+        return ""
+    )
+    return data.JsonStringify().toStr()
+)
+
+def sub(number a, number b) number (
+    return a - b
+)
+
+def toLower(string str) string (
+    return str.toLower()
+)
+
+def toUpper(string str) string (
+    return str.toUpper()
+)
+
+def slugify(string str) string (
+    string result = str.toLower()
+    result = result.replace(" ", "-").toStr()
+    return result
+)
+
+def prop(any obj, string key) any (
+    if obj == null (
+        return ""
+    )
+    auto o = obj.assert(object)
+    if o.contains(key) (
+        return o[key]
+    )
+    return ""
+)
+
+def emptyStateData(string icon, string message, boolean cta, string ctaUrl, string ctaText) object (
+    return {
+        icon: icon,
+        message: message,
+        cta: cta,
+        ctaUrl: ctaUrl,
+        ctaText: ctaText
+    }
+)
+
+def themeCardData(object theme, object mods, boolean showAuthor, boolean showActions, boolean showDate, object users) object (
+    return {
+        Theme: theme,
+        Mods: mods,
+        ShowAuthor: showAuthor,
+        ShowActions: showActions,
+        ShowDate: showDate,
+        Users: users
+    }
+)
+

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WarpTheme - Browse Themes</title>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+
+<body>
+    {{template "nav" .}}
+
+    <main class="main-content">
+        <section class="toolbar">
+            <div class="search-bar">
+                <i data-lucide="search" class="search-icon"></i>
+                <input type="text" id="search-input" placeholder="Search themes..." />
+            </div>
+            <div class="filter-controls">
+                <label for="color-select">Color</label>
+                <select id="color-select">
+                    <option value="">All Colors</option>
+                    <option value="red">Red</option>
+                    <option value="orange">Orange</option>
+                    <option value="yellow">Yellow</option>
+                    <option value="green">Green</option>
+                    <option value="blue">Blue</option>
+                    <option value="purple">Purple</option>
+                    <option value="pink">Pink</option>
+                </select>
+            </div>
+            <div class="filter-controls">
+                <label for="platform-select">Platform</label>
+                <select id="platform-select">
+                    <option value="">All Platforms</option>
+                    {{range $id, $mod := .Mods}}
+                    <option value="{{$id}}" {{if eq $id $.PlatformFilter}}selected{{end}}>{{$mod.name}}</option>
+                    {{end}}
+                </select>
+            </div>
+            <div class="sort-controls">
+                <label for="sort-select">Sort by</label>
+                <select id="sort-select">
+                    <option value="newest" {{if eq .SortBy "newest" }}selected{{end}}>Newest</option>
+                    <option value="likes" {{if eq .SortBy "likes" }}selected{{end}}>Most Liked</option>
+                    <option value="name" {{if eq .SortBy "name" }}selected{{end}}>Name</option>
+                </select>
+            </div>
+        </section>
+
+        <section id="themes-grid" class="themes-grid" aria-label="Theme gallery">
+            {{if .Themes}}
+                {{range .Themes}}
+                    {{template "theme-card" (themeCardData . $.Mods true false false $.Users)}}
+                {{end}}
+            {{else}}
+            <div class="empty-state">
+                <i data-lucide="palette"></i>
+                <p>No themes yet. Be the first to create one!</p>
+                {{if .Authenticated}}
+                <a href="/upload" class="btn primary">Create Theme</a>
+                {{end}}
+            </div>
+            {{end}}
+        </section>
+    </main>
+
+    {{template "footer" .}}
+
+    <script src="/static/js/main.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

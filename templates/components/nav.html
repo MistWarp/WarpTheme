@@ -1,0 +1,70 @@
+{{define "nav"}}
+<nav class="navbar">
+    <div class="nav-container">
+        <a href="/themes" class="nav-brand">WarpTheme</a>
+        
+        <div class="nav-links">
+            <a href="/" class="nav-link {{if eq .ActivePage "home"}}active{{end}}">
+                <i data-lucide="home"></i>
+                <span>Home</span>
+            </a>
+            <a href="/themes" class="nav-link {{if eq .ActivePage "themes"}}active{{end}}">
+                <i data-lucide="layout-grid"></i>
+                <span>Themes</span>
+            </a>
+            
+            {{if .Authenticated}}
+            <a href="/my-themes" class="nav-link {{if eq .ActivePage "my-themes"}}active{{end}}">
+                <i data-lucide="folder-open"></i>
+                <span>My Themes</span>
+            </a>
+            <a href="/upload" class="nav-link {{if eq .ActivePage "upload"}}active{{end}}">
+                <i data-lucide="upload"></i>
+                <span>Upload</span>
+            </a>
+            
+            {{if .User}}
+            <div class="nav-user-dropdown">
+                <button id="user-menu-btn" class="nav-user-btn">
+                    {{if eq .User.authType "scratch"}}
+                    {{if .User.avatar}}
+                    <img src="{{.User.avatar}}" alt="{{.User.username}}" class="nav-avatar">
+                    {{else}}
+                    <img src="{{getScratchUserAvatarURL .User.username}}" alt="{{.User.username}}" class="nav-avatar">
+                    {{end}}
+                    {{else if eq .User.authType "rotur"}}
+                    <img src="https://avatars.rotur.dev/{{.User.username}}" alt="{{.User.username}}" class="nav-avatar">
+                    {{end}}
+                    <span class="nav-username">{{formatUsername .User.username .User.authType}}</span>
+                    <i data-lucide="chevron-down" class="dropdown-icon"></i>
+                </button>
+                <div class="dropdown-menu" id="dropdown-menu" style="display: none;">
+                    <a href="/profile?userId={{.UserId}}&authType={{.User.authType}}" class="dropdown-item {{if eq .ActivePage "profile"}}active{{end}}">
+                        <i data-lucide="user"></i>
+                        <span>Profile</span>
+                    </a>
+                    <a href="/likes" class="dropdown-item {{if eq .ActivePage "likes"}}active{{end}}">
+                        <i data-lucide="heart"></i>
+                        <span>Liked Themes</span>
+                    </a>
+                    <a href="/settings" class="dropdown-item {{if eq .ActivePage "settings"}}active{{end}}">
+                        <i data-lucide="settings"></i>
+                        <span>Settings</span>
+                    </a>
+                    <a href="/logout" class="dropdown-item dropdown-logout">
+                        <i data-lucide="log-out"></i>
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </div>
+            {{end}}
+            {{else}}
+            <a href="/auth" class="nav-link nav-login {{if eq .ActivePage "auth"}}active{{end}}">
+                <i data-lucide="log-in"></i>
+                <span>Login</span>
+            </a>
+            {{end}}
+        </div>
+    </div>
+</nav>
+{{end}}

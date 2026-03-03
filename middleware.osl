@@ -1,0 +1,73 @@
+def authMiddleware(*gin.Context c) (
+    string token = getCookie(c, "auth_token")
+    string authenticated = "false"
+    object user = {}
+    string authType = ""
+    string userId = ""
+
+    if token != "" (
+        object result = getCurrentUser(c)
+        if result.ok == true (
+            authenticated = "true"
+            user = result.user
+            authType = result.authType.assert("string").toStr()
+            userId = result.userId.assert("string").toStr()
+        )
+    )
+
+    c.Set("authenticated", authenticated)
+    c.Set("user", user)
+    c.Set("authType", authType)
+    c.Set("userId", userId)
+
+    c.Next()
+)
+
+def requireAuth(*gin.Context c) (
+    boolean authenticated = c.MustGet("authenticated").toBool()
+
+    if !authenticated (
+        c.Redirect(302, "/auth")
+        c.Abort()
+        return
+    )
+
+    c.Next()
+)
+
+def requireOwner(*gin.Context c) (
+    string uuid = c.Query("uuid")
+
+    if uuid == "" (
+        uuid = c.Param("uuid")
+    )
+
+    if uuid == "" (
+        c.JSON(400, {ok: false, error: "missing theme uuid"})
+        c.Abort()
+        return
+    )
+
+    auto themeResult = getTheme(uuid)
+
+    if !themeResult.ok (
+        c.JSON(404, {ok: false, error: "theme not found"})
+        c.Abort()
+        return
+    )
+
+    object theme = themeResult.theme
+    array themesArr = theme.themes
+    object themeEntry = themesArr[1]
+
+    string author = themeEntry.author.toStr()
+    string userId = c.MustGet("userId").toStr()
+
+    if author != userId (
+        c.JSON(403, {ok: false, error: "not authorized"})
+        c.Abort()
+        return
+    )
+
+    c.Next()
+)

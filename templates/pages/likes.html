@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liked Themes - WarpTheme</title>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=stylesheet" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    {{template "nav" .}}
+
+    <main class="main-content">
+        <div id="themes-grid" class="themes-grid">
+            {{if .Themes}}
+                {{range .Themes}}
+                {{template "theme-card" (themeCardData . $.Mods true false true $.Users)}}
+                {{end}}
+            {{else}}
+                {{template "empty-state" (emptyStateData "heart" "You haven't liked any themes yet." true "/themes" "Browse Themes")}}
+            {{end}}
+        </div>
+    </main>
+
+    {{template "footer" .}}
+
+    <script src="/static/js/main.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

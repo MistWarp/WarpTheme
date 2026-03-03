@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Theme.name}} - WarpTheme</title>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=stylesheet" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    {{template "nav" .}}
+    
+    <main class="main-content">
+        <div class="theme-detail-layout">
+            <div class="theme-detail-main">
+                <div class="theme-detail-banner" id="theme-banner" style="{{if .Theme.theme.colors}}{{safeStyle (buildGradientFromColors .Theme.theme.colors)}}{{else if .Theme.theme.accent}}{{safeStyle (buildGradientFromAccent .Theme.theme.accent)}}{{end}}"></div>
+                
+                <div class="theme-detail-content">
+                    <div class="theme-preview-colors" id="preview-colors">
+                        {{if .Theme.theme.colors.gradient}}
+                            {{range .Theme.theme.colors.gradient}}
+                                <div class="preview-color-dot" style="background-color: {{.color}}"></div>
+                            {{end}}
+                        {{else if .Theme.theme.accent.colors}}
+                            {{range .Theme.theme.accent.colors}}
+                                <div class="preview-color-dot" style="background-color: {{.color}}"></div>
+                            {{end}}
+                        {{else}}
+                            <div class="preview-color-dot" style="background-color: #4c97ff"></div>
+                            <div class="preview-color-dot" style="background-color: #9966ff"></div>
+                        {{end}}
+                    </div>
+                    
+                    <div class="theme-header-section">
+                        <div class="theme-title-group">
+                            <h1 class="theme-title">{{.Theme.name}}</h1>
+                            <div class="theme-meta">
+                                {{if .ModData}}
+                                <a href="/themes?platform={{.Platform}}" class="mod-info">
+                                    <img src="{{.ModData.icon}}" alt="{{.ModData.name}}" class="mod-icon">
+                                    <span>{{.ModData.name}}</span>
+                                </a>
+                                {{end}}
+                                <span class="created-at">
+                                    <i data-lucide="clock"></i>
+                                    {{if .Theme.createdAt}}{{formatDate .Theme.createdAt}}{{else if .Theme.theme.createdAt}}{{formatDate .Theme.theme.createdAt}}{{else}}Unknown{{end}}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="theme-actions">
+                            {{if .Mods}}
+                            <div class="export-dropdown">
+                                <button class="btn secondary export-dropdown-toggle" id="export-dropdown-btn">
+                                    <i data-lucide="download"></i>
+                                    Export
+                                    <i data-lucide="chevron-down"></i>
+                                </button>
+                                <div class="export-dropdown-menu" id="export-dropdown-menu">
+                                    {{range $id, $mod := .Mods}}
+                                    <button class="export-option" data-platform="{{$id}}" data-theme-uuid="{{$.ThemeUUID}}">
+                                        <img src="{{$mod.icon}}" alt="{{$mod.name}}" class="mod-icon-small">
+                                        <span>Export for {{$mod.name}}</span>
+                                    </button>
+                                    {{end}}
+                                </div>
+                            </div>
+                            {{end}}
+                            <button class="download-stat-btn" title="Downloads">
+                                <i data-lucide="download"></i>
+                                <span>{{formatNumber .Downloads}}</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="theme-rating-actions">
+                        <button class="rating-btn like {{if eq .UserRating "like"}}active{{end}}" data-rating="like" title="Like this theme">
+                            <i data-lucide="thumbs-up"></i>
+                            <span>{{formatNumber .Ratings.likes}}</span>
+                        </button>
+                        <button class="rating-btn dislike {{if eq .UserRating "dislike"}}active{{end}}" data-rating="dislike" title="Dislike this theme">
+                            <i data-lucide="thumbs-down"></i>
+                            <span>{{formatNumber .Ratings.dislikes}}</span>
+                        </button>
+                    </div>
+                    
+                    <div class="theme-description">
+                        <h2>Description</h2>
+                        <p>{{if .Theme.description}}{{.Theme.description}}{{else}}No description provided.{{end}}</p>
+                    </div>
+                    
+                    {{if .Theme.theme.platformData.mistwarp}}
+                    <div class="theme-specs">
+                        <h2>MistWarp Settings</h2>
+                        <div class="spec-grid">
+                            {{if .Theme.theme.platformData.mistwarp.gui}}
+                            <div class="spec-item">
+                                <div class="spec-label">GUI Mode</div>
+                                <div class="spec-value">{{.Theme.theme.platformData.mistwarp.gui}}</div>
+                            </div>
+                            {{end}}
+                            {{if .Theme.theme.platformData.mistwarp.blocks}}
+                            <div class="spec-item">
+                                <div class="spec-label">Blocks Style</div>
+                                <div class="spec-value">{{.Theme.theme.platformData.mistwarp.blocks}}</div>
+                            </div>
+                            {{end}}
+                            {{if .Theme.theme.platformData.mistwarp.menuBarAlign}}
+                            <div class="spec-item">
+                                <div class="spec-label">Menu Alignment</div>
+                                <div class="spec-value">{{.Theme.theme.platformData.mistwarp.menuBarAlign}}</div>
+                            </div>
+                            {{end}}
+                        </div>
+                    </div>
+                    {{end}}
+                    
+                    {{if .Theme.theme.wallpaper.url}}
+                    <div class="theme-wallpaper">
+                        <h2>Wallpaper</h2>
+                        <div class="wallpaper-preview">
+                            <img src="{{.Theme.theme.wallpaper.url}}" alt="Wallpaper" loading="lazy">
+                        </div>
+                        <div class="wallpaper-info">
+                            {{if .Theme.theme.wallpaper.opacity}}
+                            <span>Opacity: {{.Theme.theme.wallpaper.opacity}}</span>
+                            {{end}}
+                            {{if .Theme.theme.wallpaper.darkness}}
+                            <span>Darkness: {{.Theme.theme.wallpaper.darkness}}</span>
+                            {{end}}
+                        </div>
+                    </div>
+                    {{else if .Theme.theme.wallpaper}}
+                    <div class="theme-wallpaper">
+                        <h2>Wallpaper</h2>
+                        <p>Wallpaper configured but no URL specified</p>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+            
+            {{if and .AuthorUser .AuthorUser.username .AuthorAuthType}}
+            <aside class="author-sidebar">
+                <div class="author-card">
+                    <div class="author-avatar-wrapper">
+                        {{if eq .AuthorAuthType "scratch"}}
+                        {{if and .AuthorUser.avatar (ne .AuthorUser.avatar "")}}
+                        <img src="{{.AuthorUser.avatar}}" alt="{{.AuthorUser.username}}" class="author-avatar-large">
+                        {{else}}
+                        <img src="{{getScratchUserAvatarURL .AuthorUser.username}}" alt="{{.AuthorUser.username}}" class="author-avatar-large">
+                        {{end}}
+                        {{else if eq .AuthorAuthType "rotur"}}
+                        <img src="https://avatars.rotur.dev/{{.AuthorUser.username}}" alt="{{.AuthorUser.username}}" class="author-avatar-large">
+                        {{end}}
+                    </div>
+                    <h3 class="author-name">{{formatUsername .AuthorUser.username .AuthorAuthType}}</h3>
+                    <a href="/profile?userId={{.Theme.author}}&authType={{.AuthorAuthType}}" class="view-profile-link">View Profile</a>
+                    
+                    <div class="author-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">{{.AuthorThemeCount}}</div>
+                            <div class="stat-label">Themes</div>
+                        </div>
+                        {{if .AuthorJoinDate}}
+                        <div class="stat-item">
+                            <div class="stat-value">
+                                <i data-lucide="calendar"></i>
+                            </div>
+                            <div class="stat-label">Joined {{.AuthorJoinDate}}</div>
+                        </div>
+                        {{end}}
+                    </div>
+                </div>
+                
+                {{if .IsOwner}}
+                <div class="author-card actions-card">
+                    <h3>Actions</h3>
+                    <div class="theme-actions vertical">
+                        <button id="edit-theme-btn" class="btn secondary" data-uuid="{{.ThemeUUID}}" data-name="{{.Theme.name}}" data-description="{{.Theme.description}}">
+                            <i data-lucide="edit"></i>
+                            Edit
+                        </button>
+                        <button id="delete-btn" class="btn danger" data-uuid="{{.ThemeUUID}}">
+                            <i data-lucide="trash-2"></i>
+                            Delete
+                        </button>
+                    </div>
+                </div>
+                {{end}}
+            </aside>
+            {{end}}
+        </div>
+    </main>
+
+    {{template "footer" .}}
+
+    {{template "edit-theme-modal" .}}
+
+    <script src="/static/js/main.js"></script>
+    <script src="/static/js/theme-detail.js"></script>
+    <script src="/static/js/edit-theme-modal.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const banner = document.getElementById('theme-banner');
+        if (!banner) return;
+        
+        let colorsArray = [];
+        
+        // Check for new colors format first
+        const colorsData = banner.dataset.colors;
+        const accentData = banner.dataset.accent;
+        
+        try {
+            let colors;
+            if (colorsData) {
+                colors = JSON.parse(colorsData);
+                if (colors.gradient && Array.isArray(colors.gradient)) {
+                    colorsArray = colors.gradient;
+                }
+            } else if (accentData) {
+                colors = JSON.parse(accentData);
+                if (colors.colors && Array.isArray(colors.colors)) {
+                    colorsArray = colors.colors;
+                }
+            }
+            
+            if (colorsArray.length >= 2) {
+                const sortedColors = [...colorsArray].sort((a, b) => (a.position || 0) - (b.position || 0));
+                const color1 = sortedColors[0].color;
+                const color2 = sortedColors[sortedColors.length - 1].color;
+                banner.style.background = `linear-gradient(135deg, ${color1}, ${color2})`;
+            }
+        } catch (e) {
+            console.debug('Failed to parse color data:', e);
+        }
+    });
+</script>
+</html>

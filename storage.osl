@@ -1,0 +1,939 @@
+def ensureDirectories() boolean (
+    boolean result = fs.MkdirAll(usersDir)
+    result = result and fs.MkdirAll(sessionsDir)
+    result = result and fs.MkdirAll(ratingsDir)
+    result = result and fs.MkdirAll(downloadsDir)
+    result = result and fs.MkdirAll(themesDir)
+    return result
+)
+
+def migrateUsers() boolean (
+    string oldFile = "data/users.json"
+    if !fs.Exists(oldFile) (
+        return true
+    )
+    
+    auto result = readFile(oldFile)
+    if !result.ok (
+        return false
+    )
+    
+    object usersData = result.data.assert(object)
+    object users = usersData.users
+    
+    array userIds = users.getKeys().toArray()
+    
+    for i userIds.len (
+        string userId = userIds[i].toStr()
+        object user = users[userId]
+        
+        string path = usersDir ++ userId ++ ".json"
+        if !fs.Exists(path) (
+            writeFile(path, user)
+        )
+    )
+    
+    string backupPath = oldFile ++ ".backup"
+    fs.Rename(oldFile, backupPath)
+    
+    return true
+)
+
+def migrateSessions() boolean (
+    string oldFile = "data/sessions.json"
+    if !fs.Exists(oldFile) (
+        return true
+    )
+    
+    auto result = readFile(oldFile)
+    if !result.ok (
+        return false
+    )
+    
+    object sessionsData = result.data.assert(object)
+    object sessions = sessionsData.sessions
+    
+    array sessionIds = sessions.getKeys().toArray()
+    
+    for i sessionIds.len (
+        string sessionId = sessionIds[i].toStr()
+        object session = sessions[sessionId]
+        
+        string path = sessionsDir ++ sessionId ++ ".json"
+        if !fs.Exists(path) (
+            writeFile(path, session)
+        )
+    )
+    
+    string backupPath = oldFile ++ ".backup"
+    fs.Rename(oldFile, backupPath)
+    
+    return true
+)
+
+def migrateRatings() boolean (
+    string oldFile = "data/ratings.json"
+    if !fs.Exists(oldFile) (
+        return true
+    )
+    
+    auto result = readFile(oldFile)
+    if !result.ok (
+        return false
+    )
+    
+    object ratingsData = result.data.assert(object)
+    object ratings = ratingsData.ratings
+    
+    array themeUUIDs = ratings.getKeys().toArray()
+    
+    for i themeUUIDs.len (
+        string uuid = themeUUIDs[i].toStr()
+        object rating = ratings[uuid]
+        
+        string path = ratingsDir ++ uuid ++ ".json"
+        if !fs.Exists(path) (
+            writeFile(path, rating)
+        )
+    )
+    
+    string backupPath = oldFile ++ ".backup"
+    fs.Rename(oldFile, backupPath)
+    
+    return true
+)
+
+def migrateDownloads() boolean (
+    string oldFile = "data/downloads.json"
+    if !fs.Exists(oldFile) (
+        return true
+    )
+    
+    auto result = readFile(oldFile)
+    if !result.ok (
+        return false
+    )
+    
+    object downloadsData = result.data.assert(object)
+    object downloads = downloadsData.downloads
+    
+    array themeUUIDs = downloads.getKeys().toArray()
+    
+    for i themeUUIDs.len (
+        string uuid = themeUUIDs[i].toStr()
+        object download = downloads[uuid]
+        
+        string path = downloadsDir ++ uuid ++ ".json"
+        if !fs.Exists(path) (
+            writeFile(path, download)
+        )
+    )
+    
+    string backupPath = oldFile ++ ".backup"
+    fs.Rename(oldFile, backupPath)
+    
+    return true
+)
+
+def migrateData() boolean (
+    if fs.Exists("data/users.json") (
+        if !migrateUsers() (
+            return false
+        )
+    )
+    
+    if fs.Exists("data/sessions.json") (
+        if !migrateSessions() (
+            return false
+        )
+    )
+    
+    if fs.Exists("data/ratings.json") (
+        if !migrateRatings() (
+            return false
+        )
+    )
+    
+    if fs.Exists("data/downloads.json") (
+        if !migrateDownloads() (
+            return false
+        )
+    )
+    
+    return true
+)
+
+def readFile(string path) any (
+    if !fs.Exists(path) (
+        return {ok: false, error: "file not found"}
+    )
+    string content = fs.ReadFile(path)
+    object parsed = content.JsonParse()
+    return {ok: true, data: parsed}
+)
+
+def writeFile(string path, object data) boolean (
+    string json = data.JsonStringify()
+    return fs.WriteFile(path, json)
+)
+
+def generateUUID(string username) string (
+    string ts = raw("fmt.Sprintf(\"%d\", time.Now().UnixNano())")
+    string randStr = randomString(8)
+    return "theme-" ++ ts ++ "-" ++ randStr
+)
+
+def randomString(number length) string (
+    string charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    string result = ""
+    for i length (
+        number idx = random(1, charset.len).toNum()
+        result ++= charset[idx].toStr()
+    )
+    return result
+)
+
+def loadThemeIndex() object (
+    auto result = readFile(indexFile)
+    if !result.ok (
+        return {themes: {}}
+    )
+    return result.data.assert(object)
+)
+
+def saveThemeIndex(object index) boolean (
+    return writeFile(indexFile, index)
+)
+
+def rebuildIndexWithAccents() boolean (
+    object index = loadThemeIndex()
+    object themes = index.themes
+    array keys = themes.getKeys().toArray()
+    boolean anyUpdated = false
+    
+    for i keys.len (
+        string uuid = keys[i].toStr()
+        object entry = themes[uuid]
+        
+        auto themeResult = loadThemeFile(uuid)
+        if themeResult.ok (
+            object themeData = themeResult.data
+            object themeObj = themeData.theme
+            
+            if themeObj.contains("colors") (
+                if !entry.contains("colors") (
+                    entry.colors = themeObj.colors
+                    anyUpdated = true
+                )
+            ) else if themeObj.contains("accent") (
+                object colors = extractColorsFromAccent(themeObj.accent)
+                if colors.contains("gradient") (
+                    entry.colors = colors
+                    entry.delete("accent")
+                    anyUpdated = true
+                )
+            )
+        )
+    )
+    
+    if anyUpdated (
+        return saveThemeIndex(index)
+    )
+    return true
+)
+
+def loadMods() object (
+    auto result = readFile(modsFile)
+    if !result.ok (
+        return {mods: {}}
+    )
+    return result.data.assert(object)
+)
+
+def getModInfo(string platformId) object (
+    auto modsData = loadMods()
+    object mods = modsData.mods
+    
+    if !mods.contains(platformId) (
+        return {ok: false, error: "mod not found"}
+    )
+    
+    return {ok: true, mod: mods[platformId]}
+)
+
+def isSupportedMod(string platformId) boolean (
+    auto modsData = loadMods()
+    object mods = modsData.mods
+    return mods.contains(platformId.toLower())
+)
+
+def loadThemeFile(string uuid) object (
+    string path = themesDir ++ uuid ++ ".json"
+    auto result = readFile(path)
+    if !result.ok (
+        return {ok: false, error: result.error}
+    )
+    return {ok: true, data: result.data}
+)
+
+def saveThemeFile(string uuid, object themeData) boolean (
+    string path = themesDir ++ uuid ++ ".json"
+    return writeFile(path, themeData)
+)
+
+def deleteThemeFile(string uuid) boolean (
+    string path = themesDir ++ uuid ++ ".json"
+    return fs.Remove(path)
+)
+
+def extractColorsFromAccent(any accent) any (
+    any colors = {}
+    if accent != null and typeof(accent) == "object" (
+        object acc = accent
+        if acc.contains("colors") (
+            colors.gradient = acc.colors
+        )
+        if acc.contains("direction") (
+            colors.gradientDirection = acc.direction
+        )
+    )
+    return colors
+)
+
+def getInnerTheme(any jsonData) any (
+    if typeof(jsonData) == "object" (
+        object jd = jsonData
+        if jd.contains("themes") and typeof(jd.themes) == "array" (
+            array themes = jd.themes.toArray()
+            if themes.len > 0 (
+                return themes[1]
+            )
+        ) else if jd.contains("theme") (
+            return jd.theme
+        )
+        return jd
+    )
+    return jsonData
+)
+
+def addToIndex(object themeIndex, object theme) boolean (
+    object themes = themeIndex.themes
+    
+    object themeEntry = {
+        uuid: theme.uuid,
+        name: theme.name,
+        author: theme.author,
+        authorType: theme.authorType,
+        createdAt: theme.createdAt,
+        size: theme.size,
+        platform: theme.platform,
+        downloads: 0,
+        colors: {}
+    }
+    
+    object themeObj = {}
+    if theme.contains("theme") (
+        themeObj = theme.theme
+    ) else (
+        themeObj = theme
+    )
+    
+    if themeObj != null (
+        if themeObj.contains("colors") (
+            themeEntry.colors = themeObj.colors
+        ) else if themeObj.contains("accent") (
+            themeEntry.colors = extractColorsFromAccent(themeObj.accent)
+        )
+    )
+    
+    themes[theme.uuid.assert("string").toStr()] = themeEntry
+    return saveThemeIndex(themeIndex)
+)
+
+def updateIndex(string uuid, object updates) boolean (
+    object index = loadThemeIndex()
+    object themes = index.themes
+
+    if !themes.contains(uuid) (
+        return false
+    )
+    
+    object entry = themes[uuid]
+    array keys = updates.getKeys().toArray()
+    for i keys.len (
+        string k = keys[i].toStr()
+        entry[k] = updates[k]
+    )
+    return saveThemeIndex(index)
+)
+
+def removeFromIndex(string uuid) boolean (
+    object index = loadThemeIndex()
+    object themes = index.themes
+
+    if !themes.contains(uuid) (
+        return false
+    )
+    
+    themes.delete(uuid)
+    return saveThemeIndex(index)
+)
+
+def getUser(string identifier, string authType) object (
+    string path = usersDir ++ identifier ++ ".json"
+    auto result = readFile(path)
+    if !result.ok (
+        return {ok: false, error: "user not found"}
+    )
+    object user = result.data.assert(object)
+    string userAuthType = user.authType.toStr()
+    if userAuthType == authType (
+        return {ok: true, user: user}
+    )
+    return {ok: false, error: "user not found"}
+)
+
+def ensureUser(string identifier, string authType, string username) object (
+    auto getUserResult = getUser(identifier, authType)
+    if getUserResult.ok (
+        return getUserResult
+    )
+
+    object user = {
+        username: username,
+        authType: authType,
+        themes: [],
+        createdAt: timestamp
+    }
+
+    string path = usersDir ++ identifier ++ ".json"
+    writeFile(path, user)
+    return {ok: true, user: user}
+)
+
+def addUserTheme(string identifier, string uuid) boolean (
+    auto userResult = getUser(identifier, "scratch")
+    if !userResult.ok (
+        userResult = getUser(identifier, "rotur")
+    )
+    if !userResult.ok (
+        return false
+    )
+    
+    object user = userResult.user
+    array themes = user.themes.assert(array)
+    if !themes.contains(uuid) (
+        themes.append(uuid)
+        user.themes = themes
+        string path = usersDir ++ identifier ++ ".json"
+        writeFile(path, user)
+    )
+    return true
+)
+
+def removeUserTheme(string identifier, string uuid) boolean (
+    auto userResult = getUser(identifier, "scratch")
+    if !userResult.ok (
+        userResult = getUser(identifier, "rotur")
+    )
+    if !userResult.ok (
+        return false
+    )
+    
+    object user = userResult.user
+    array oldThemes = user.themes.assert(array)
+    array newThemes = []
+    
+    for i oldThemes.len (
+        if oldThemes[i].toStr() != uuid (
+            newThemes.append(oldThemes[i])
+        )
+    )
+    
+    user.themes = newThemes
+    string path = usersDir ++ identifier ++ ".json"
+    writeFile(path, user)
+    return true
+)
+
+def loadUsersByIds(array userIds) object (
+    object users = {}
+    for i userIds.len (
+        string userId = userIds[i].toStr()
+        auto userResult = getUser(userId, "scratch")
+        if !userResult.ok (
+            userResult = getUser(userId, "rotur")
+        )
+        if userResult.ok (
+            users[userId] = userResult.user
+        )
+    )
+    return users
+)
+
+def deleteUser(string identifier, string authType) boolean (
+    auto userResult = getUser(identifier, authType)
+    if !userResult.ok (
+        return false
+    )
+    
+    string path = usersDir ++ identifier ++ ".json"
+    return fs.Remove(path)
+)
+
+def getRatings(string uuid) object (
+    string path = ratingsDir ++ uuid ++ ".json"
+    auto result = readFile(path)
+    if result.ok (
+        return result.data.assert(object)
+    )
+    return {likes: 0, dislikes: 0, userRatings: {}}
+)
+
+def rateTheme(string uuid, string userId, string rating) boolean (
+    if rating != "like" and rating != "dislike" (
+        return false
+    )
+
+    object themeRatings = getRatings(uuid)
+    object userRatings = themeRatings.userRatings
+
+    boolean isToggling = false
+
+    if userRatings.contains(userId) (
+        string oldRating = userRatings[userId].toStr()
+        if oldRating == rating (
+            isToggling = true
+        )
+        if oldRating == "like" (
+            themeRatings.likes = themeRatings.likes.toNum() - 1
+        ) else (
+            themeRatings.dislikes = themeRatings.dislikes.toNum() - 1
+        )
+    )
+
+    if !isToggling (
+        if rating == "like" (
+            themeRatings.likes = themeRatings.likes.toNum() + 1
+        ) else (
+            themeRatings.dislikes = themeRatings.dislikes.toNum() + 1
+        )
+
+        userRatings[userId] = rating
+    ) else (
+        userRatings.delete(userId)
+    )
+
+    themeRatings.userRatings = userRatings
+
+    string path = ratingsDir ++ uuid ++ ".json"
+    writeFile(path, themeRatings)
+    return true
+)
+
+def createUserTheme(object themeData, string userId, string authType) object (
+    object index = loadThemeIndex()
+
+    string username = ""
+    if authType == "scratch" (
+        username = userId
+    ) else (
+        auto userResult = getUser(userId, authType)
+        if !userResult.ok (
+            return {ok: false, error: "user not found"}
+        )
+        username = userResult.user.username.toStr()
+    )
+
+    string uuid = generateUUID(username)
+    string createdAt = time.Now().Format("2006-01-02T15:04:05.999Z")
+
+    string platformId = (themeData.platform ?? themeData.jsonData.platform).toStr()
+    if platformId == "" (
+        return {ok: false, error: "theme platform is required"}
+    )
+
+    if !isSupportedMod(platformId) (
+        return {ok: false, error: "unsupported mod: " ++ platformId}
+    )
+
+    object innerTheme = getInnerTheme(themeData.jsonData)
+    auto normalizeResult = normalizeThemeToIntermediate(innerTheme, platformId)
+    if !normalizeResult.ok (
+        return {ok: false, error: "failed to normalize theme: " ++ normalizeResult.error}
+    )
+    object intermediate = normalizeResult.intermediate
+
+    object indexEntry = {
+        uuid: uuid,
+        createdAt: createdAt,
+        author: userId,
+        authorType: authType,
+        name: themeData.name,
+        description: themeData.description,
+        size: themeData.size,
+        platform: platformId,
+        downloads: 0,
+        colors: intermediate.colors
+    }
+
+    object theme = {
+        version: themeData.jsonData.version.toStr(),
+        timestamp: timestamp,
+        platform: platformId,
+        description: themeData.description,
+        name: themeData.name,
+        uuid: uuid,
+        author: userId,
+        authorType: authType,
+        theme: {
+            colors: intermediate.colors,
+            wallpaper: intermediate.wallpaper,
+            fonts: intermediate.fonts,
+            platformData: intermediate.platformData
+        }
+    }
+
+    if !saveThemeFile(uuid, theme) (
+        return {ok: false, error: "failed to save theme file"}
+    )
+
+    if !addToIndex(index, indexEntry) (
+        deleteThemeFile(uuid)
+        return {ok: false, error: "failed to add to index"}
+    )
+
+    addUserTheme(userId, uuid)
+    themeAuthorCache[uuid] = userId
+    return {ok: true, uuid: uuid}
+)
+
+def getTheme(string uuid) object (
+    auto result = loadThemeFile(uuid)
+    if !result.ok (
+        return {ok: false, error: result.error}
+    )
+    return {ok: true, theme: result.data}
+)
+
+def getThemeBySlug(string username, string themeName) object (
+    object index = loadThemeIndex()
+    object themes = index.themes
+    array keys = themes.getKeys().toArray()
+
+    for i keys.len (
+        string uuid = keys[i].toStr()
+        object theme = themes[uuid]
+
+        string author = theme.author.toStr()
+        string name = theme.name.toStr()
+        string slug = name.toLower().replace(" ", "-")
+
+        if author == username and slug == themeName (
+            return {ok: true, uuid: uuid}
+        )
+    )
+
+    return {ok: false}
+)
+
+def getThemeColors(any themeData, any indexEntry) any (
+    if themeData != null and typeof(themeData) == "object" (
+        object td = themeData
+        if td.theme != null (
+            object theme = td.theme
+            if theme.contains("colors") and theme.colors != null (
+                return theme.colors
+            ) else if theme.contains("accent") and theme.accent != null (
+                return extractColorsFromAccent(theme.accent)
+            )
+        )
+    )
+    if indexEntry != null and typeof(indexEntry) == "object" (
+        object ie = indexEntry
+        if ie.contains("colors") and ie.colors != null (
+            return ie.colors
+        ) else if ie.contains("accent") and ie.accent != null (
+            return extractColorsFromAccent(ie.accent)
+        )
+    )
+    return {}
+)
+
+def listThemes(string sortBy) object (
+    object index = loadThemeIndex()
+    object indexThemes = index.themes
+    array themeList = []
+    array keys = indexThemes.getKeys().toArray()
+    
+    for i keys.len (
+        string uuid = keys[i].toStr()
+        auto themeResult = loadThemeFile(uuid)
+        if themeResult.ok (
+            object themeData = themeResult.data
+            object indexEntry = indexThemes[uuid]
+            
+            number downloads = indexEntry.downloads.toNum()
+            object ratings = getRatings(uuid)
+            number likes = ratings.likes.toNum()
+            number dislikes = ratings.dislikes.toNum()
+            
+            string desc = ""
+            if themeData.description != null (
+                desc = themeData.description.toStr()
+            )
+            
+            themeList.append({
+                uuid: themeData.uuid,
+                name: themeData.name,
+                description: desc,
+                author: themeData.author,
+                authorType: themeData.authorType,
+                platform: themeData.platform,
+                createdAt: indexEntry.createdAt,
+                colors: getThemeColors(themeData, indexEntry),
+                likes: likes,
+                dislikes: dislikes,
+                downloads: downloads
+            })
+        )
+    )
+
+    if sortBy == "likes" (
+        themeList.sortBy("likes", true)
+    ) else if sortBy == "name" (
+        themeList.sortBy("name", false)
+    ) else (
+        themeList.sortBy("createdAt", true)
+    )
+
+    return {ok: true, themes: themeList}
+)
+
+def getThemeAuthor(string uuid) string (
+    if themeAuthorCache.contains(uuid) (
+        return themeAuthorCache[uuid].assert("string").toStr()
+    )
+    
+    auto index = loadThemeIndex()
+    object themes = index.themes
+    
+    if !themes.contains(uuid) (
+        return ""
+    )
+    
+    string author = themes[uuid].author.toStr()
+    themeAuthorCache[uuid] = author
+    return author
+)
+
+def updateTheme(string uuid, object updates, string userId) object (
+    auto themeResult = getTheme(uuid)
+    if !themeResult.ok (
+        return {ok: false, error: "theme not found"}
+    )
+
+    if getThemeAuthor(uuid) != userId (
+        return {ok: false, error: "not authorized"}
+    )
+
+    object theme = themeResult.theme
+    array keys = updates.getKeys().toArray()
+    for i keys.len (
+        string k = keys[i].toStr()
+        theme[k] = updates[k]
+    )
+
+    if !saveThemeFile(uuid, theme) (
+        return {ok: false, error: "failed to save theme"}
+    )
+
+    if updates.contains("name") (
+        updateIndex(uuid, {name: theme.name})
+    )
+
+    return {ok: true}
+)
+
+def deleteTheme(string uuid, string userId) object (
+    auto themeResult = getTheme(uuid)
+    if !themeResult.ok (
+        return {ok: false, error: "theme not found"}
+    )
+
+    if getThemeAuthor(uuid) != userId (
+        return {ok: false, error: "not authorized"}
+    )
+
+    if !deleteThemeFile(uuid) (
+        return {ok: false, error: "failed to delete theme file"}
+    )
+
+    if !removeFromIndex(uuid) (
+        return {ok: false, error: "failed to remove from index"}
+    )
+
+    if !removeUserTheme(userId, uuid) (
+        return {ok: false, error: "failed to remove from user"}
+    )
+
+    if themeAuthorCache.contains(uuid) (
+        themeAuthorCache.delete(uuid)
+    )
+
+    return {ok: true}
+)
+
+def getUserThemes(string identifier, string authType) object (
+    auto userResult = getUser(identifier, authType)
+    if !userResult.ok (
+        return {ok: false, error: "user not found"}
+    )
+
+    object user = userResult.user
+    object index = loadThemeIndex()
+    object indexThemes = index.themes
+    auto themes = []
+
+    array themeUUIDs = user.themes.assert(array)
+    for i themeUUIDs.len (
+        string uuid = themeUUIDs[i].toStr()
+        auto themeResult = loadThemeFile(uuid)
+        if themeResult.ok (
+            object themeData = themeResult.data
+            object indexEntry = indexThemes[uuid]
+            
+            number downloads = indexEntry.downloads.toNum()
+            object ratings = getRatings(uuid)
+            number likes = ratings.likes.toNum()
+            number dislikes = ratings.dislikes.toNum()
+            
+            themes.append({
+                uuid: themeData.uuid,
+                name: themeData.name,
+                description: themeData.description.toStr(),
+                author: themeData.author,
+                authorType: themeData.authorType,
+                platform: themeData.platform,
+                createdAt: indexEntry.createdAt,
+                colors: getThemeColors(themeData, indexEntry),
+                likes: likes,
+                dislikes: dislikes,
+                downloads: downloads
+            })
+        )
+    )
+
+    themes.sortBy("createdAt", true)
+    return {ok: true, themes: themes, user: user}
+)
+
+def hasDownloaded(string uuid, string userId) boolean (
+    string path = downloadsDir ++ uuid ++ ".json"
+    auto result = readFile(path)
+    if !result.ok (
+        return false
+    )
+    
+    object downloadData = result.data.assert(object)
+    array userIds = downloadData.downloads.assert(array)
+    return userIds.contains(userId)
+)
+
+def recordDownload(string uuid, string userId) boolean (
+    string path = downloadsDir ++ uuid ++ ".json"
+    object downloadData = {downloads: []}
+    
+    auto result = readFile(path)
+    if result.ok (
+        downloadData = result.data
+    )
+    
+    array userIds = downloadData.downloads
+    
+    if userIds.contains(userId) (
+        return true
+    )
+    
+    userIds.append(userId)
+    downloadData.downloads = userIds
+    writeFile(path, downloadData)
+    
+    object index = loadThemeIndex()
+    object themes = index.themes
+    
+    if themes.contains(uuid) (
+        object entry = themes[uuid]
+        number current = entry.downloads.toNum()
+        entry.downloads = current + 1
+        saveThemeIndex(index)
+    )
+    
+    return true
+)
+
+def getDownloadCount(string uuid) number (
+    object index = loadThemeIndex()
+    object themes = index.themes
+    
+    if !themes.contains(uuid) (
+        return 0
+    )
+    
+    object entry = themes[uuid]
+    return entry.downloads.toNum()
+)
+
+def getUserLikedThemes(string userId, string authType) object (
+    auto userResult = getUser(userId, authType)
+    if !userResult.ok (
+        return {ok: false, error: "user not found"}
+    )
+    
+    object user = userResult.user
+    
+    object index = loadThemeIndex()
+    object indexThemes = index.themes
+    auto themes = []
+    
+    array ratingFiles = fs.ReadDir(ratingsDir).toArray()
+    for i ratingFiles.len (
+        string filename = ratingFiles[i].toStr()
+        if !filename.endsWith(".json") (
+            continue
+        )
+        
+        string uuid = filename.trim(1, -5).toStr()
+        object themeRatings = getRatings(uuid)
+        object userRatings = themeRatings.userRatings
+        
+        if userRatings.contains(userId) and userRatings[userId].toStr() == "like" (
+            auto themeResult = loadThemeFile(uuid)
+            if themeResult.ok (
+                object themeData = themeResult.data
+                object indexEntry = indexThemes[uuid]
+                
+                number downloads = indexEntry.downloads.toNum()
+                number likes = themeRatings.likes.toNum()
+                number dislikes = themeRatings.dislikes.toNum()
+                
+                themes.append({
+                    uuid: themeData.uuid,
+                    name: themeData.name,
+                    description: themeData.description.toStr(),
+                    author: themeData.author,
+                    authorType: themeData.authorType,
+                    platform: themeData.platform,
+                    createdAt: indexEntry.createdAt,
+                    colors: getThemeColors(themeData, indexEntry),
+                    likes: likes,
+                    dislikes: dislikes,
+                    downloads: downloads
+                })
+            )
+        )
+    )
+    
+    themes.sortBy("createdAt", true)
+    return {ok: true, themes: themes, user: user}
+)

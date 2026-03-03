@@ -1,0 +1,73 @@
+{{ define "theme-card" }}
+{{$theme := .Theme}}
+{{$mods := .Mods}}
+{{$showAuthor := .ShowAuthor}}
+{{$showActions := .ShowActions}}
+{{$showDate := .ShowDate}}
+{{$users := .Users}}
+<article class="theme-card" data-uuid="{{$theme.uuid}}" data-name="{{$theme.name}}" data-platform="{{$theme.platform}}">
+    <div class="theme-card-header" style="{{if $theme.colors}}{{safeStyle (buildGradientFromColors $theme.colors)}}{{else if $theme.accent}}{{safeStyle (buildGradientFromAccent $theme.accent)}}{{end}}" {{if $theme.colors}}data-colors='{{ toJson $theme.colors }}'{{else if $theme.accent}}data-accent='{{ toJson $theme.accent }}'{{end}}>
+        <div class="theme-card-header-left">
+        </div>
+        <div class="theme-card-actions">
+            <a href="/themes/{{$theme.author}}/{{slugify $theme.name}}" class="view-btn" title="View Theme">
+                <i data-lucide="eye"></i>
+            </a>
+            {{if $showActions}}
+            <button class="rename-btn action-btn" title="Rename Theme" data-uuid="{{$theme.uuid}}" data-name="{{$theme.name}}" data-description="{{$theme.description}}">
+                <i data-lucide="edit"></i>
+            </button>
+            <button class="delete-btn action-btn" title="Delete Theme" data-uuid="{{$theme.uuid}}">
+                <i data-lucide="trash-2"></i>
+            </button>
+            {{end}}
+        </div>
+    </div>
+    <div class="theme-card-body">
+        <h3 class="theme-name">{{$theme.name}}</h3>
+        <p class="theme-description truncate">{{if $theme.description}}{{$theme.description}}{{else}}&nbsp;{{end}}</p>
+    </div>
+    <div class="theme-card-footer">
+        {{if $showAuthor}}
+        {{if $users}}
+        {{with index $users $theme.author}}
+        <div class="theme-author">
+            {{if eq .authType "scratch"}}
+                {{if .avatar}}
+                <img src="{{.avatar}}" alt="{{.username}}" class="author-avatar">
+                {{else}}
+                <img src="{{getScratchUserAvatarURL .username}}" alt="{{.username}}" class="author-avatar">
+                {{end}}
+            {{else if eq .authType "rotur"}}
+                <img src="https://avatars.rotur.dev/{{.username}}" alt="{{.username}}" class="author-avatar">
+            {{else}}
+                <div class="author-avatar avatar-placeholder">{{.username}}</div>
+            {{end}}
+            <span class="author-name">{{formatUsername .username .authType}}</span>
+        </div>
+        {{end}}
+        {{end}}
+        {{end}}
+        <div class="theme-stats">
+            <div class="stat">
+                <i data-lucide="heart"></i>
+                <span>{{formatNumber (sub $theme.likes ($theme.dislikes))}}</span>
+            </div>
+            <div class="stat">
+                <i data-lucide="download"></i>
+                <span>{{formatNumber $theme.downloads}}</span>
+            </div>
+            {{if and $mods $theme.platform}}
+            {{with index $mods (toLower $theme.platform)}}
+            <a href="/themes?platform={{toLower $theme.platform}}" class="mod-icon-link" title="{{.name}} (click to filter)">
+                <img src="{{.icon}}" alt="{{.name}}" class="mod-icon">
+            </a>
+            {{end}}
+            {{end}}
+            {{if $showDate}}
+            <span class="created-at">{{formatDate $theme.createdAt}}</span>
+            {{end}}
+        </div>
+    </div>
+</article>
+{{ end }}

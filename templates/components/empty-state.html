@@ -1,0 +1,9 @@
+{{ define "empty-state" }}
+<div class="empty-state">
+    <i data-lucide="{{or .icon "inbox"}}"></i>
+    <p>{{or .message "No data available"}}</p>
+    {{if .cta}}
+    <a href="{{.ctaUrl}}" class="btn primary">{{or .ctaText "Get Started"}}</a>
+    {{end}}
+</div>
+{{ end }}
